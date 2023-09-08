@@ -7,7 +7,7 @@ func (b binding) RequestHttpBody() bool {
 }
 
 var (
-	// 请求 body为 google.api.HttpBody 视为上传文件操作
+	// 请求 body为 stream google.api.HttpBody 视为上传文件操作
 	_ = template.Must(handlerTemplate.New("client-streaming-httpbody").Parse(`
 {{template "request-func-signature" .}} {
 	var svmetadata runtime.ServerMetadata
@@ -73,6 +73,24 @@ var (
 	svmetadata.TrailerMD = stream.Trailer()
 	return msg, svmetadata, err
 {{end}}
+}
+	`))
+
+	// 请求 body为 google.api.HttpBody 视为raw body传递到下游
+	_ = template.Must(handlerTemplate.New("client-raw-httpbody").Parse(`
+{{template "request-func-signature" .}} {
+	var protoReq {{.Method.RequestType.GoType .Method.Service.File.GoPkg.Path}}
+	var metadata runtime.ServerMetadata
+	b, err := io.ReadAll(req.Body)
+	if err != nil{
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "read raw http body: %v", err)
+	}
+	protoReq=httpbody.HttpBody{
+		Data: b,
+		ContentType: req.Header.Get("content-type"),
+	}
+	msg, err := client.{{.Method.GetName}}(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
 }
 	`))
 )

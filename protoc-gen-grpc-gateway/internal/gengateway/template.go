@@ -256,8 +256,10 @@ var _ = metadata.Join
 	handlerTemplate = template.Must(template.New("handler").Parse(`
 {{if and .Method.GetClientStreaming .Method.GetServerStreaming}}
 {{template "bidi-streaming-request-func" .}}
-{{else if .RequestHttpBody}}
+{{else if and .Method.GetClientStreaming .RequestHttpBody}}
 {{template "client-streaming-httpbody" .}}
+{{else if .RequestHttpBody}}
+{{template "client-raw-httpbody" .}}
 {{else if .Method.GetClientStreaming}}
 {{template "client-streaming-request-func" .}}
 {{else}}
